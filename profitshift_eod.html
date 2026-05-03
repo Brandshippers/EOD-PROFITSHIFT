@@ -137,6 +137,7 @@
   .type-opt.selected-close{background:rgba(28,227,179,.15);border-color:var(--teal);color:var(--teal)}
   .type-opt.selected-viewed{background:rgba(126,160,221,.15);border-color:var(--blue);color:var(--blue)}
   .type-opt.selected-cancelled{background:rgba(224,82,82,.15);border-color:var(--danger);color:var(--danger)}
+  .type-opt.selected-reschedule{background:rgba(126,160,221,.15);border-color:var(--blue);color:var(--blue)}
   .type-opt.selected-followup{background:rgba(234,106,65,.15);border-color:var(--orange);color:var(--orange)}
   .type-opt:hover{border-color:var(--blue);color:var(--blue)}
 
@@ -358,6 +359,7 @@ function getTypeClass(t) {
   if(t==='close') return 'tag-green';
   if(t==='viewed') return 'tag-blue';
   if(t==='cancelled') return 'danger';
+  if(t==='reschedule') return 'tag-blue';
   if(t==='followup') return 'tag-orange';
   return 'tag-blue';
 }
@@ -365,6 +367,7 @@ function getTypeLabel(t) {
   if(t==='close') return '🤝 Close';
   if(t==='viewed') return '👁 Viewed by E-mail';
   if(t==='cancelled') return '✕ Cancelled';
+  if(t==='reschedule') return '↻ Reschedule';
   if(t==='followup') return '↩ Follow Up Close';
   return t;
 }
@@ -591,6 +594,7 @@ function addCallBlock() {
         <div class="type-opt" data-cb="${id}" data-type="viewed" onclick="selectType(this,'viewed')">👁 Viewed</div>
         <div class="type-opt" data-cb="${id}" data-type="followup" onclick="selectType(this,'followup')">↩ Follow Up Close</div>
         <div class="type-opt" data-cb="${id}" data-type="cancelled" onclick="selectType(this,'cancelled')">✕ Cancelled</div>
+        <div class="type-opt" data-cb="${id}" data-type="reschedule" onclick="selectType(this,'reschedule')">↻ Reschedule</div>
       </div>
     </div>
     <div class="field-row">
