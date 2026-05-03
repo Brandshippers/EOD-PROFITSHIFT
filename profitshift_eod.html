@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EOD — Profitshift</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#001824;
+    --surface:#002E40;
+    --card:#003A52;
+    --card2:#004260;
+    --border:#005070;
+    --teal:#1CE3B3;
+    --teal-dim:#0fa87e;
+    --blue:#7EA0DD;
+    --orange:#EA6A41;
+    --white:#FBFBFB;
+    --muted:#6B8CA0;
+    --danger:#e05252;
+    --success:#1CE3B3;
+    --font:'DM Sans',sans-serif;
+    --mono:'DM Mono',monospace;
+  }
+  body{background:var(--bg);color:var(--white);font-family:var(--font);min-height:100vh;font-size:15px;line-height:1.6}
+
+  /* ── LAYOUT ── */
+  .shell{display:flex;min-height:100vh}
+  .sidebar{width:220px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:0}
+  .main{flex:1;overflow:auto}
+
+  /* ── SIDEBAR ── */
+  .logo{padding:24px 20px 20px;border-bottom:1px solid var(--border)}
+  .logo-mark{font-size:13px;font-weight:600;letter-spacing:.08em;color:var(--teal)}
+  .logo-sub{font-size:11px;color:var(--muted);margin-top:2px}
+  .nav{padding:16px 0;flex:1}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:13px;color:var(--muted);cursor:pointer;transition:all .15s;border-left:2px solid transparent}
+  .nav-item:hover{color:var(--white);background:rgba(255,255,255,.03)}
+  .nav-item.active{color:var(--teal);border-left-color:var(--teal);background:rgba(28,227,179,.06)}
+  .nav-icon{width:16px;text-align:center;font-size:14px}
+  .sidebar-date{padding:16px 20px;border-top:1px solid var(--border);font-family:var(--mono);font-size:11px;color:var(--muted)}
+
+  /* ── TOPBAR ── */
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:20px 32px;border-bottom:1px solid var(--border);background:var(--surface);position:sticky;top:0;z-index:10}
+  .topbar-title{font-size:16px;font-weight:600}
+  .topbar-sub{font-size:12px;color:var(--muted);margin-top:1px}
+  .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;transition:all .15s;font-family:var(--font)}
+  .btn-primary{background:var(--teal);color:#001824}
+  .btn-primary:hover{background:var(--teal-dim)}
+  .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
+  .btn-ghost:hover{color:var(--white);border-color:var(--blue)}
+  .btn-danger{background:transparent;color:var(--danger);border:1px solid var(--danger)}
+  .btn-danger:hover{background:rgba(224,82,82,.1)}
+
+  /* ── CONTENT ── */
+  .content{padding:32px}
+
+  /* ── STATS ROW ── */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px}
+  .stat{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
+  .stat-label{font-size:11px;font-weight:500;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;margin-bottom:8px}
+  .stat-val{font-size:28px;font-weight:600;font-family:var(--mono);color:var(--white)}
+  .stat-val.green{color:var(--teal)}
+  .stat-val.orange{color:var(--orange)}
+  .stat-sub{font-size:11px;color:var(--muted);margin-top:4px}
+
+  /* ── MISSING BADGE ── */
+  .missing-bar{background:rgba(234,106,65,.1);border:1px solid rgba(234,106,65,.3);border-radius:10px;padding:12px 16px;margin-bottom:24px;display:flex;align-items:center;gap:10px;font-size:13px}
+  .missing-bar .dot{width:8px;height:8px;border-radius:50%;background:var(--orange);flex-shrink:0}
+  .missing-bar strong{color:var(--orange)}
+
+  /* ── EOD CARDS ── */
+  .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .section-title{font-size:13px;font-weight:500;letter-spacing:.06em;color:var(--muted);text-transform:uppercase}
+  .eod-grid{display:flex;flex-direction:column;gap:12px}
+
+  .eod-card{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:border-color .15s}
+  .eod-card:hover{border-color:var(--blue)}
+  .eod-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;cursor:pointer;user-select:none}
+  .eod-left{display:flex;align-items:center;gap:12px}
+  .avatar{width:36px;height:36px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:var(--teal);flex-shrink:0;border:1px solid var(--border)}
+  .eod-name{font-weight:500;font-size:14px}
+  .eod-date{font-size:12px;color:var(--muted);font-family:var(--mono)}
+  .eod-right{display:flex;align-items:center;gap:12px}
+  .tag{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500}
+  .tag-green{background:rgba(28,227,179,.1);color:var(--teal);border:1px solid rgba(28,227,179,.2)}
+  .tag-orange{background:rgba(234,106,65,.1);color:var(--orange);border:1px solid rgba(234,106,65,.2)}
+  .tag-blue{background:rgba(126,160,221,.1);color:var(--blue);border:1px solid rgba(126,160,221,.2)}
+  .cash-badge{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--teal)}
+  .chevron{color:var(--muted);font-size:12px;transition:transform .2s}
+  .chevron.open{transform:rotate(180deg)}
+
+  .eod-body{display:none;padding:0 20px 20px;border-top:1px solid var(--border)}
+  .eod-body.open{display:block}
+  .eod-grid-inner{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:16px}
+  .eod-section{display:flex;flex-direction:column;gap:8px}
+  .eod-section-title{font-size:11px;font-weight:500;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;margin-bottom:4px}
+
+  .call-item{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:12px 14px}
+  .call-type{display:flex;align-items:center;gap:6px;margin-bottom:6px}
+  .call-type-label{font-size:11px;font-weight:600;letter-spacing:.05em}
+  .call-name{font-size:13px;font-weight:500;color:var(--white);margin-bottom:4px}
+  .call-setter{font-size:11px;color:var(--muted);margin-bottom:6px}
+  .call-note{font-size:12px;color:var(--blue);line-height:1.5}
+  .call-amount{font-family:var(--mono);font-size:12px;color:var(--teal);margin-top:6px;font-weight:500}
+
+  .reflectie-box{background:var(--card2);border-left:2px solid var(--blue);border-radius:0 8px 8px 0;padding:10px 14px;font-size:13px;color:var(--blue);font-style:italic;margin-top:8px}
+
+  .stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+  .mini-stat{background:var(--card2);border-radius:8px;padding:10px 12px;text-align:center}
+  .mini-stat-val{font-family:var(--mono);font-size:16px;font-weight:600;color:var(--white)}
+  .mini-stat-val.green{color:var(--teal)}
+  .mini-stat-label{font-size:10px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.05em}
+
+  /* ── FORM VIEW ── */
+  .form-wrap{max-width:600px;margin:0 auto}
+  .form-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:32px;margin-bottom:16px}
+  .form-title{font-size:16px;font-weight:600;margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--border)}
+  .field{margin-bottom:20px}
+  .field label{display:block;font-size:12px;font-weight:500;letter-spacing:.05em;color:var(--muted);text-transform:uppercase;margin-bottom:8px}
+  .field input,.field textarea,.field select{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;font-size:14px;color:var(--white);font-family:var(--font);outline:none;transition:border-color .15s;resize:vertical}
+  .field input:focus,.field textarea:focus,.field select:focus{border-color:var(--teal)}
+  .field select option{background:var(--surface)}
+  .field textarea{min-height:80px}
+  .field-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .call-block{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:12px;position:relative}
+  .call-block-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .call-block-title{font-size:12px;font-weight:600;letter-spacing:.05em;color:var(--muted);text-transform:uppercase}
+  .remove-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0;line-height:1}
+  .remove-btn:hover{color:var(--danger)}
+  .add-call-btn{width:100%;background:transparent;border:1px dashed var(--border);border-radius:8px;padding:10px;font-size:13px;color:var(--muted);cursor:pointer;font-family:var(--font);transition:all .15s}
+  .add-call-btn:hover{border-color:var(--teal);color:var(--teal)}
+  .type-select{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:0}
+  .type-opt{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);color:var(--muted);transition:all .15s;user-select:none}
+  .type-opt.selected-close{background:rgba(28,227,179,.15);border-color:var(--teal);color:var(--teal)}
+  .type-opt.selected-viewed{background:rgba(126,160,221,.15);border-color:var(--blue);color:var(--blue)}
+  .type-opt.selected-cancelled{background:rgba(224,82,82,.15);border-color:var(--danger);color:var(--danger)}
+  .type-opt.selected-followup{background:rgba(234,106,65,.15);border-color:var(--orange);color:var(--orange)}
+  .type-opt:hover{border-color:var(--blue);color:var(--blue)}
+
+  /* ── EMPTY ── */
+  .empty{text-align:center;padding:60px 20px;color:var(--muted)}
+  .empty-icon{font-size:36px;margin-bottom:12px}
+  .empty p{font-size:14px}
+
+  /* ── HIDDEN ── */
+  .view{display:none}
+  .view.active{display:block}
+
+  /* ── REMINDER TOOLTIP ── */
+  .reminder-btn{position:relative}
+  .reminder-list{position:absolute;top:calc(100% + 8px);right:0;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:8px;min-width:180px;z-index:100;display:none}
+  .reminder-list.open{display:block}
+  .reminder-item{padding:8px 12px;font-size:13px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:space-between}
+  .reminder-item:hover{background:rgba(255,255,255,.05)}
+  .reminder-item .ri-name{color:var(--white)}
+  .reminder-item .ri-status{font-size:11px;color:var(--orange)}
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-mark">PROFITSHIFT</div>
+      <div class="logo-sub">Closer Dashboard</div>
+    </div>
+    <nav class="nav">
+      <div class="nav-item active" onclick="showView('dashboard')">
+        <span class="nav-icon">◈</span> Dashboard
+      </div>
+      <div class="nav-item" onclick="showView('form')">
+        <span class="nav-icon">＋</span> EOD Insturen
+      </div>
+    </nav>
+    <div class="sidebar-date" id="sidebarDate"></div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- DASHBOARD VIEW -->
+    <div class="view active" id="view-dashboard">
+      <div class="topbar">
+        <div>
+          <div class="topbar-title">EOD Overzicht</div>
+          <div class="topbar-sub" id="todayLabel"></div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="reminder-btn">
+            <button class="btn btn-ghost" onclick="toggleReminders()" id="reminderBtn">📣 Reminder sturen</button>
+            <div class="reminder-list" id="reminderList"></div>
+          </div>
+          <button class="btn btn-primary" onclick="showView('form')">＋ EOD Insturen</button>
+        </div>
+      </div>
+
+      <div class="content">
+        <!-- Stats -->
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-label">Totale omzet vandaag</div>
+            <div class="stat-val green" id="statCash">€ 0</div>
+            <div class="stat-sub" id="statCashEx">excl. btw: € 0</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Closes vandaag</div>
+            <div class="stat-val" id="statCloses">0</div>
+            <div class="stat-sub">deals gesloten</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Calls vandaag</div>
+            <div class="stat-val" id="statCalls">0</div>
+            <div class="stat-sub">calls genomen</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">EOD's ingestuurd</div>
+            <div class="stat-val orange" id="statEods">0 / 0</div>
+            <div class="stat-sub" id="statMissingNames"></div>
+          </div>
+        </div>
+
+        <!-- Missing bar -->
+        <div class="missing-bar" id="missingBar" style="display:none">
+          <div class="dot"></div>
+          <span>Nog geen EOD van: <strong id="missingNames"></strong></span>
+        </div>
+
+        <!-- EOD List -->
+        <div class="section-header">
+          <div class="section-title">Ingekomen EOD's</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick="filterEods('all')" id="f-all">Alles</button>
+            <button class="btn btn-ghost" style="font-size:12px;padding:6px 12px" onclick="filterEods('today')" id="f-today">Vandaag</button>
+          </div>
+        </div>
+        <div class="eod-grid" id="eodList">
+          <div class="empty">
+            <div class="empty-icon">📋</div>
+            <p>Nog geen EOD's ingestuurd vandaag.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FORM VIEW -->
+    <div class="view" id="view-form">
+      <div class="topbar">
+        <div>
+          <div class="topbar-title">EOD Insturen</div>
+          <div class="topbar-sub" id="formDateLabel"></div>
+        </div>
+        <button class="btn btn-ghost" onclick="showView('dashboard')">← Terug</button>
+      </div>
+      <div class="content">
+        <div class="form-wrap">
+
+          <div class="form-card">
+            <div class="form-title">👤 Jouw gegevens</div>
+            <div class="field">
+              <label>Naam closer</label>
+              <select id="f-naam">
+                <option value="">Selecteer jouw naam</option>
+                <option>Samir</option>
+                <option>Max</option>
+              </select>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label>Total Calls</label>
+                <input type="number" id="f-total" placeholder="0" min="0">
+              </div>
+              <div class="field">
+                <label>Calls Taken</label>
+                <input type="number" id="f-taken" placeholder="0" min="0">
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label>Follow Ups</label>
+                <input type="number" id="f-followups" placeholder="0" min="0">
+              </div>
+              <div class="field">
+                <label>No Shows</label>
+                <input type="number" id="f-noshows" placeholder="0" min="0">
+              </div>
+            </div>
+          </div>
+
+          <div class="form-card">
+            <div class="form-title">📞 Calls</div>
+            <div id="callBlocks"></div>
+            <button class="add-call-btn" onclick="addCallBlock()">＋ Call toevoegen</button>
+          </div>
+
+          <div class="form-card">
+            <div class="form-title">💰 Cash</div>
+            <div class="field-row">
+              <div class="field">
+                <label>Cash Collected incl. btw (€)</label>
+                <input type="number" id="f-cash" placeholder="0" min="0">
+              </div>
+              <div class="field">
+                <label>Cash Collected excl. btw (€)</label>
+                <input type="number" id="f-cashex" placeholder="0" min="0">
+              </div>
+            </div>
+            <div class="field">
+              <label>Notitie bij betaling (optioneel)</label>
+              <input type="text" id="f-cashnote" placeholder="bijv. wordt morgen betaald...">
+            </div>
+          </div>
+
+          <div class="form-card">
+            <div class="form-title">💭 Reflectie</div>
+            <div class="field">
+              <label>Hoe was je dag? Wat viel op?</label>
+              <textarea id="f-reflectie" placeholder="Schrijf hier je reflectie..."></textarea>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:12px;justify-content:flex-end;margin-bottom:40px">
+            <button class="btn btn-ghost" onclick="showView('dashboard')">Annuleren</button>
+            <button class="btn btn-primary" onclick="submitEOD()">EOD Insturen ✓</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// ── STATE ──
+const CLOSERS = ['Samir','Max'];
+let eods = JSON.parse(localStorage.getItem('bs_eods') || '[]');
+let callBlockCount = 0;
+let filterMode = 'all';
+
+// ── HELPERS ──
+function today() {
+  return new Date().toLocaleDateString('nl-NL',{day:'2-digit',month:'2-digit',year:'numeric'});
+}
+function todayKey() {
+  const d = new Date();
+  return `${d.getDate()}-${d.getMonth()+1}-${d.getFullYear()}`;
+}
+function fmt(n) {
+  return '€ ' + Number(n).toLocaleString('nl-NL',{minimumFractionDigits:0,maximumFractionDigits:0});
+}
+function initials(name) {
+  return name.split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+}
+function getTypeClass(t) {
+  if(t==='close') return 'tag-green';
+  if(t==='viewed') return 'tag-blue';
+  if(t==='cancelled') return 'danger';
+  if(t==='followup') return 'tag-orange';
+  return 'tag-blue';
+}
+function getTypeLabel(t) {
+  if(t==='close') return '🤝 Close';
+  if(t==='viewed') return '👁 Viewed by E-mail';
+  if(t==='cancelled') return '✕ Cancelled';
+  if(t==='followup') return '↩ Follow Up Close';
+  return t;
+}
+
+// ── DATE LABELS ──
+function initDates() {
+  const d = new Date();
+  const label = d.toLocaleDateString('nl-NL',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  document.getElementById('todayLabel').textContent = label;
+  document.getElementById('formDateLabel').textContent = 'EOD ' + todayKey();
+  document.getElementById('sidebarDate').textContent = today();
+}
+
+// ── VIEWS ──
+function showView(v) {
+  document.querySelectorAll('.view').forEach(el=>el.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  const map = {dashboard:0,form:1};
+  document.querySelectorAll('.nav-item')[map[v]]?.classList.add('active');
+  if(v==='dashboard') renderDashboard();
+  if(v==='form') initForm();
+}
+
+// ── DASHBOARD ──
+function renderDashboard() {
+  const todayEods = eods.filter(e=>e.date===todayKey());
+  const allDisplay = filterMode==='today' ? todayEods : eods;
+
+  // Stats
+  const cashTotal = todayEods.reduce((s,e)=>s+(+e.cash||0),0);
+  const cashExTotal = todayEods.reduce((s,e)=>s+(+e.cashex||0),0);
+  const closesTotal = todayEods.reduce((s,e)=>s+e.calls.filter(c=>c.type==='close'||c.type==='followup').length,0);
+  const callsTotal = todayEods.reduce((s,e)=>s+(+e.taken||0),0);
+  const activeClosers = CLOSERS.filter(c=>c!=='Closer 3'&&c!=='Closer 4');
+  const submitted = [...new Set(todayEods.map(e=>e.naam))];
+  const missing = activeClosers.filter(c=>!submitted.includes(c));
+
+  document.getElementById('statCash').textContent = fmt(cashTotal);
+  document.getElementById('statCashEx').textContent = 'excl. btw: ' + fmt(cashExTotal);
+  document.getElementById('statCloses').textContent = closesTotal;
+  document.getElementById('statCalls').textContent = callsTotal;
+  document.getElementById('statEods').textContent = submitted.length + ' / ' + activeClosers.length;
+  document.getElementById('statMissingNames').textContent = missing.length ? 'Mist: '+missing.join(', ') : 'Compleet ✓';
+
+  const mb = document.getElementById('missingBar');
+  if(missing.length) {
+    mb.style.display='flex';
+    document.getElementById('missingNames').textContent = missing.join(', ');
+  } else {
+    mb.style.display='none';
+  }
+
+  // Reminder list
+  const rl = document.getElementById('reminderList');
+  rl.innerHTML = missing.length
+    ? missing.map(m=>`<div class="reminder-item"><span class="ri-name">${m}</span><span class="ri-status" onclick="markReminded('${m}')">📣 Herinnerd</span></div>`).join('')
+    : `<div style="padding:10px 12px;font-size:13px;color:var(--teal)">✓ Iedereen heeft ingestuurd</div>`;
+
+  // EOD list
+  const list = document.getElementById('eodList');
+  if(!allDisplay.length) {
+    list.innerHTML = `<div class="empty"><div class="empty-icon">📋</div><p>Nog geen EOD's ingestuurd.</p></div>`;
+    return;
+  }
+  const sorted = [...allDisplay].reverse();
+  list.innerHTML = sorted.map((e,i)=>renderEodCard(e,i)).join('');
+}
+
+function renderEodCard(e, i) {
+  const closes = e.calls.filter(c=>c.type==='close'||c.type==='followup');
+  const isToday = e.date===todayKey();
+  return `
+  <div class="eod-card">
+    <div class="eod-header" onclick="toggleCard(${i})">
+      <div class="eod-left">
+        <div class="avatar">${initials(e.naam)}</div>
+        <div>
+          <div class="eod-name">${e.naam}</div>
+          <div class="eod-date">EOD ${e.date}${isToday?' · vandaag':''}</div>
+        </div>
+      </div>
+      <div class="eod-right">
+        ${closes.length ? `<span class="tag tag-green">🤝 ${closes.length} close${closes.length>1?'s':''}</span>` : ''}
+        ${e.cash ? `<span class="cash-badge">${fmt(e.cash)}</span>` : ''}
+        <span class="tag tag-blue">${e.taken} calls</span>
+        <button onclick="event.stopPropagation();editEod(${e.id})" style="background:transparent;border:1px solid var(--blue);color:var(--blue);border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;font-family:var(--font)">✎ Aanpas</button>
+        <button onclick="event.stopPropagation();deleteEod(${e.id})" style="background:transparent;border:1px solid var(--danger);color:var(--danger);border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;font-family:var(--font)">✕ Verwijder</button>
+        <span class="chevron" id="chev-${i}">▾</span>
+      </div>
+    </div>
+    <div class="eod-body" id="body-${i}">
+      <div class="stats-row">
+        <div class="mini-stat">
+          <div class="mini-stat-val">${e.total||0}</div>
+          <div class="mini-stat-label">Total Calls</div>
+        </div>
+        <div class="mini-stat">
+          <div class="mini-stat-val">${e.taken||0}</div>
+          <div class="mini-stat-label">Calls Taken</div>
+        </div>
+        <div class="mini-stat">
+          <div class="mini-stat-val green">${fmt(e.cash||0)}</div>
+          <div class="mini-stat-label">Cash incl.</div>
+        </div>
+      </div>
+      ${e.calls.length ? `
+      <div style="margin-top:16px">
+        <div class="eod-section-title" style="margin-bottom:8px">Calls</div>
+        ${e.calls.map(c=>`
+          <div class="call-item" style="margin-bottom:8px">
+            <div class="call-type">
+              <span class="tag ${getTypeClass(c.type)}" style="font-size:10px">${getTypeLabel(c.type)}</span>
+            </div>
+            ${c.naam ? `<div class="call-name">${c.naam}</div>` : ''}
+            ${c.setter ? `<div class="call-setter">via ${c.setter}</div>` : ''}
+            ${c.note ? `<div class="call-note">${c.note}</div>` : ''}
+            ${c.amount ? `<div class="call-amount">${c.amount}</div>` : ''}
+          </div>
+        `).join('')}
+      </div>` : ''}
+      ${e.reflectie ? `<div class="reflectie-box">"${e.reflectie}"</div>` : ''}
+      ${e.cashnote ? `<div style="margin-top:8px;font-size:12px;color:var(--muted)">💬 ${e.cashnote}</div>` : ''}
+    </div>
+  </div>`;
+}
+
+function toggleCard(i) {
+  const body = document.getElementById('body-'+i);
+  const chev = document.getElementById('chev-'+i);
+  body.classList.toggle('open');
+  chev.classList.toggle('open');
+}
+
+function filterEods(mode) {
+  filterMode = mode;
+  document.getElementById('f-all').style.borderColor = mode==='all' ? 'var(--teal)' : '';
+  document.getElementById('f-today').style.borderColor = mode==='today' ? 'var(--teal)' : '';
+  renderDashboard();
+}
+
+function toggleReminders() {
+  document.getElementById('reminderList').classList.toggle('open');
+}
+
+function editEod(id) {
+  const e = eods.find(x=>x.id===id);
+  if(!e) return;
+  // Pre-fill form with existing data
+  showView('form');
+  setTimeout(()=>{
+    document.getElementById('f-naam').value = e.naam;
+    document.getElementById('f-total').value = e.total;
+    document.getElementById('f-taken').value = e.taken;
+    document.getElementById('f-followups').value = e.followups||0;
+    document.getElementById('f-noshows').value = e.noshows||0;
+    document.getElementById('f-cash').value = e.cash;
+    document.getElementById('f-cashex').value = e.cashex;
+    document.getElementById('f-cashnote').value = e.cashnote||'';
+    document.getElementById('f-reflectie').value = e.reflectie||'';
+
+    // Clear default call block and rebuild from saved calls
+    document.getElementById('callBlocks').innerHTML = '';
+    callBlockCount = 0;
+    e.calls.forEach(c=>{
+      addCallBlock();
+      const id2 = callBlockCount-1;
+      document.getElementById(`cb-naam-${id2}`).value = c.naam||'';
+      document.getElementById(`cb-setter-${id2}`).value = c.setter||'';
+      document.getElementById(`cb-note-${id2}`).value = c.note||'';
+      document.getElementById(`cb-amount-${id2}`).value = c.amount||'';
+      if(c.type) {
+        const opt = document.querySelector(`[data-cb="${id2}"][data-type="${c.type}"]`);
+        if(opt) selectType(opt, c.type);
+      }
+    });
+
+    // Mark this as an edit — remove old entry on submit
+    window._editingId = id;
+  }, 50);
+}
+
+function deleteEod(id) {
+  if(!confirm('Weet je zeker dat je deze EOD wilt verwijderen?')) return;
+  eods = eods.filter(e=>e.id!==id);
+  localStorage.setItem('bs_eods',JSON.stringify(eods));
+  renderDashboard();
+}
+
+function markReminded(name) {
+  alert(`Reminder verstuurd naar ${name} ✓`);
+}
+
+// ── FORM ──
+function initForm() {
+  callBlockCount = 0;
+  document.getElementById('callBlocks').innerHTML = '';
+  document.getElementById('f-naam').value = '';
+  document.getElementById('f-total').value = '';
+  document.getElementById('f-taken').value = '';
+  document.getElementById('f-followups').value = '';
+  document.getElementById('f-noshows').value = '';
+  document.getElementById('f-cash').value = '';
+  document.getElementById('f-cashex').value = '';
+  document.getElementById('f-cashnote').value = '';
+  document.getElementById('f-reflectie').value = '';
+  addCallBlock();
+}
+
+function addCallBlock() {
+  const id = callBlockCount++;
+  const div = document.createElement('div');
+  div.className = 'call-block';
+  div.id = 'cb-'+id;
+  div.innerHTML = `
+    <div class="call-block-header">
+      <div class="call-block-title">Call ${id+1}</div>
+      <button class="remove-btn" onclick="removeCallBlock(${id})" title="Verwijder">✕</button>
+    </div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:11px;font-weight:500;letter-spacing:.05em;color:var(--muted);text-transform:uppercase;margin-bottom:6px">Type</div>
+      <div class="type-select">
+        <div class="type-opt" data-cb="${id}" data-type="close" onclick="selectType(this,'close')">🤝 Close</div>
+        <div class="type-opt" data-cb="${id}" data-type="viewed" onclick="selectType(this,'viewed')">👁 Viewed</div>
+        <div class="type-opt" data-cb="${id}" data-type="followup" onclick="selectType(this,'followup')">↩ Follow Up Close</div>
+        <div class="type-opt" data-cb="${id}" data-type="cancelled" onclick="selectType(this,'cancelled')">✕ Cancelled</div>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field" style="margin-bottom:0">
+        <label>Naam lead</label>
+        <input type="text" id="cb-naam-${id}" placeholder="Voornaam achternaam">
+      </div>
+      <div class="field" style="margin-bottom:0">
+        <label>Setter</label>
+        <input type="text" id="cb-setter-${id}" placeholder="@ Setter naam">
+      </div>
+    </div>
+    <div class="field" style="margin-top:12px">
+      <label>Notitie / toelichting</label>
+      <textarea id="cb-note-${id}" placeholder="Wat is er besproken, wat viel op..." style="min-height:60px"></textarea>
+    </div>
+    <div class="field" style="margin-bottom:0">
+      <label>Bedrag (optioneel)</label>
+      <input type="text" id="cb-amount-${id}" placeholder="€ 500 incl. BTW">
+    </div>
+    <input type="hidden" id="cb-type-${id}" value="">
+  `;
+  document.getElementById('callBlocks').appendChild(div);
+}
+
+function removeCallBlock(id) {
+  document.getElementById('cb-'+id)?.remove();
+}
+
+function selectType(el, type) {
+  const cb = el.dataset.cb;
+  document.querySelectorAll(`[data-cb="${cb}"]`).forEach(o=>{
+    o.className = 'type-opt';
+  });
+  el.classList.add(`selected-${type}`);
+  document.getElementById(`cb-type-${cb}`).value = type;
+}
+
+function submitEOD() {
+  const naam = document.getElementById('f-naam').value;
+  if(!naam) { alert('Selecteer je naam'); return; }
+
+  const calls = [];
+  document.querySelectorAll('.call-block').forEach(block=>{
+    const id = block.id.replace('cb-','');
+    const type = document.getElementById(`cb-type-${id}`)?.value;
+    calls.push({
+      type: type||'viewed',
+      naam: document.getElementById(`cb-naam-${id}`)?.value||'',
+      setter: document.getElementById(`cb-setter-${id}`)?.value||'',
+      note: document.getElementById(`cb-note-${id}`)?.value||'',
+      amount: document.getElementById(`cb-amount-${id}`)?.value||''
+    });
+  });
+
+  const entry = {
+    id: Date.now(),
+    date: todayKey(),
+    naam,
+    total: document.getElementById('f-total').value||0,
+    taken: document.getElementById('f-taken').value||0,
+    followups: document.getElementById('f-followups').value||0,
+    noshows: document.getElementById('f-noshows').value||0,
+    calls,
+    cash: document.getElementById('f-cash').value||0,
+    cashex: document.getElementById('f-cashex').value||0,
+    cashnote: document.getElementById('f-cashnote').value||'',
+    reflectie: document.getElementById('f-reflectie').value||''
+  };
+
+  if(window._editingId) {
+    eods = eods.filter(e=>e.id!==window._editingId);
+    window._editingId = null;
+  }
+  eods.push(entry);
+  localStorage.setItem('bs_eods',JSON.stringify(eods));
+  showView('dashboard');
+}
+
+// ── INIT ──
+initDates();
+renderDashboard();
+filterEods('today');
+
+// Close reminder dropdown on outside click
+document.addEventListener('click', e=>{
+  if(!e.target.closest('.reminder-btn')) {
+    document.getElementById('reminderList').classList.remove('open');
+  }
+});
+</script>
+</body>
+</html>
